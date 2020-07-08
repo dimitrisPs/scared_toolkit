@@ -33,12 +33,15 @@ def depthmap_error(ref, comp):
 
     Returns:
         [np.float]: [error ref and comp, np.nan if coverage is below 10% of total pixels]
+        [np.float]: [proportion of pixels in the ref that ground truth is known]
+        [np.float]: [proportion of pixels that information is present both in ref and comp]
     """
     assert ref.shape == comp.shape
     
     # find the proporsion of pixels with ground truth
-    if depthmap_coverage(ref) < 0.1:
-        return np.nan
+    coverage = depthmap_coverage(ref)
+    if coverage < 0.1:
+        return np.nan, coverage
     
     ref = ref.reshape(-1)
     comp = comp.reshape(-1)
@@ -46,7 +49,9 @@ def depthmap_error(ref, comp):
     abs_diff = np.abs(ref-comp)
     error = np.nanmean(abs_diff)
     
-    return error
+    assessed = np.count_nonzero(~np.isnan(abs_diff)) / (ref.shape[0])
+    
+    return error, coverage, assessed
 
 
 def xyz_error(ref, comp):
@@ -64,23 +69,23 @@ def xyz_error(ref, comp):
 
     Returns:
         [np.float]: [error ref and comp, np.nan if coverage is below 10% of total pixels]
+        [np.float]: [proportion of pixels in the ref that ground truth is known]
+        [np.float]: [proportion of pixels that information is present both in ref and comp]
     """
     assert ref.shape == comp.shape
     
     # find the proporsion of pixels with ground truth, we one only one channel
     # with depthmap_coverage to check for nan values.
-    print(depthmap_coverage(ref[:,:,2]))
-    if depthmap_coverage(ref[:,:,2]) < 0.1:
-        return np.nan
-    
+    coverage = depthmap_coverage(ref[:,:,2])
+    if coverage < 0.1:
+        return np.nan, coverage, 0
     ref = ref.reshape(-1,3)
     comp = comp.reshape(-1,3)
-    print(comp[0])
-    # exit()
+    comp[comp==0] = np.nan
     distance = np.sqrt(np.sum((ref-comp)**2,axis=1))
-    # for i in range(distance.shape[0]):
-        # if ~np.equal(comp[i], np.array([0,0,0])).all():
-        #     print(ref[i], comp[i])
-        #     print(distance[i])
     error = np.nanmean(distance)
-    return error
+    
+    
+    assessed = np.count_nonzero(~np.isnan(distance)) / (ref.shape[0])
+    
+    return error, coverage, assessed
