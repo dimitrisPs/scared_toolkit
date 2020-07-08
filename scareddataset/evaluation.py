@@ -10,9 +10,9 @@ def depthmap_coverage(depthmap):
     Returns:
         float: the proportion of pixels with known ground truth [0-1]
     """
-    
     depthmap = depthmap.reshape(-1)
-    num_of_pixels = depthmap.shape
+    num_of_pixels = depthmap.shape[0]
+    
     
     num_of_known_depths = num_of_pixels - np.count_nonzero(np.isnan(depthmap))
 
@@ -42,6 +42,7 @@ def depthmap_error(ref, comp):
     
     ref = ref.reshape(-1)
     comp = comp.reshape(-1)
+    comp[comp==0] =np.nan
     abs_diff = np.abs(ref-comp)
     error = np.nanmean(abs_diff)
     
@@ -68,11 +69,18 @@ def xyz_error(ref, comp):
     
     # find the proporsion of pixels with ground truth, we one only one channel
     # with depthmap_coverage to check for nan values.
+    print(depthmap_coverage(ref[:,:,2]))
     if depthmap_coverage(ref[:,:,2]) < 0.1:
         return np.nan
     
     ref = ref.reshape(-1,3)
     comp = comp.reshape(-1,3)
+    print(comp[0])
+    # exit()
     distance = np.sqrt(np.sum((ref-comp)**2,axis=1))
+    # for i in range(distance.shape[0]):
+        # if ~np.equal(comp[i], np.array([0,0,0])).all():
+        #     print(ref[i], comp[i])
+        #     print(distance[i])
     error = np.nanmean(distance)
     return error
