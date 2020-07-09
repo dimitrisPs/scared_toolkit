@@ -1,6 +1,7 @@
 import cv2
 import argparse
 import numpy as np
+from pathlib import Path
 
 
 class Calibrator:
@@ -31,6 +32,8 @@ class Calibrator:
 
     # TODO:validate paths
     def save(self, path):
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        path=str(path)
         fs_write = cv2.FileStorage(path, cv2.FILE_STORAGE_WRITE)
         for k in self.calib.keys():
             if self.calib[k] is not None:
