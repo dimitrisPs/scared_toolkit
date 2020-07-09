@@ -56,10 +56,6 @@ def pts3d_to_depthmap(pts3d):
     return depthmap.reshape(h,w)
 
 
-
-def disparities_to_pts3d(disparity, calib):
-    pass
-
 def ptd3d_to_disparity(pts_3d, P1, P2, size):
     """create disparity images based on pts_3d and projection matrices of
     rectified views.
@@ -94,6 +90,37 @@ def ptd3d_to_disparity(pts_3d, P1, P2, size):
     disparity_img[ys,xs]=valid_disparities
     
     return disparity_img
+
+def disparity_to_original_scared(disparity, calib):
+    """convert disparity image from left rectified frame to scared depthmap in 
+    the original frame
+
+    Args:
+        disparity (np.ndarray): disparity image in the left rectified frame
+        calib (dict): calibration dictionary containing rectification parameters
+
+    Returns:
+        np.ndarray: 3d image scared depthmap expressed in the original left frame
+        with distortions, to be directly evaluated with ground truth.
+    """
+    
+    h,w= disparity.shape[:2]
+    scared_depthmap =np.zeros((h,w, 3))
+    pts3d = cv2.reprojectImageTo3D(disparity, calib['Q'])
+    pts3d = pts3d.reshape(-1,3)
+    #rotate it by inv R1 to align it with the left original frame
+    pts3d = np.nan_to_num(pts3d) # to avoid warnings when mulitpling 
+    pts3d = transform_pts(pts3d, create_RT(R = np.linalg.inv(calib['R1'])))
+    img_pts = cv2.projectPoints(pts3d, np.eye(3), np.zeros(3), calib['K1'], calib['D1'])[0].squeeze()
+    
+    img_pts = np.round(img_pts)
+    valid_indexes=((img_pts[:,0]>=0) & (img_pts[:,0]<w) & (img_pts[:,1]>=0) & (img_pts[:,1]<h))
+    depthmap_idxs = img_pts[valid_indexes].astype(int)
+    valid_pts3d = pts3d[valid_indexes]
+    xs,ys = depthmap_idxs[:,0], depthmap_idxs[:,1]
+    scared_depthmap[ys,xs]=valid_pts3d
+    return scared_depthmap
+
 
 def project_pts(pts3d, P):
     """project 3d points to image, according to projection matrix P
