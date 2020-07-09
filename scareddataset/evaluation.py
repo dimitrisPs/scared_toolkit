@@ -12,17 +12,17 @@ def depthmap_coverage(depthmap):
     """
     depthmap = depthmap.reshape(-1)
     num_of_pixels = depthmap.shape[0]
-    
-    
+
     num_of_known_depths = num_of_pixels - np.count_nonzero(np.isnan(depthmap))
 
     proportion = num_of_known_depths / num_of_pixels
-    
+
     return proportion
+
 
 def depthmap_error(ref, comp):
     """computes SCARED Frame error from depthmaps.
-    
+
     Compute error between ref and comp depthmap using mean absolute difference
     in 3d, basically mean distance. The function expects floating point hxwx1 arrays,
     with unknown pixels values in ref, set to np.nan
@@ -37,26 +37,28 @@ def depthmap_error(ref, comp):
         [np.float]: [proportion of pixels that information is present both in ref and comp]
     """
     assert ref.shape == comp.shape
-    
+    ref[ref == 0] = np.nan
+    comp[comp == 0] = np.nan
+
     # find the proporsion of pixels with ground truth
     coverage = depthmap_coverage(ref)
     if coverage < 0.1:
         return np.nan, coverage
-    
+
     ref = ref.reshape(-1)
     comp = comp.reshape(-1)
-    comp[comp==0] =np.nan
+
     abs_diff = np.abs(ref-comp)
     error = np.nanmean(abs_diff)
-    
+
     assessed = np.count_nonzero(~np.isnan(abs_diff)) / (ref.shape[0])
-    
+
     return error, coverage, assessed
 
 
 def xyz_error(ref, comp):
     """computes SCARED Frame error.
-    
+
     Compute error between ref and comp xyz images, using mean absolute difference.
     The function expects floating point hxwx3 imputs arrays, with unknown pixels
     values in ref, set to np.nan. Essentially this compares directly with the 
@@ -73,19 +75,18 @@ def xyz_error(ref, comp):
         [np.float]: [proportion of pixels that information is present both in ref and comp]
     """
     assert ref.shape == comp.shape
-    
+
     # find the proporsion of pixels with ground truth, we one only one channel
     # with depthmap_coverage to check for nan values.
-    coverage = depthmap_coverage(ref[:,:,2])
+    coverage = depthmap_coverage(ref[:, :, 2])
     if coverage < 0.1:
         return np.nan, coverage, 0
-    ref = ref.reshape(-1,3)
-    comp = comp.reshape(-1,3)
-    comp[comp==0] = np.nan
-    distance = np.sqrt(np.sum((ref-comp)**2,axis=1))
+    ref = ref.reshape(-1, 3)
+    comp = comp.reshape(-1, 3)
+    comp[comp == 0] = np.nan
+    distance = np.sqrt(np.sum((ref-comp)**2, axis=1))
     error = np.nanmean(distance)
-    
-    
+
     assessed = np.count_nonzero(~np.isnan(distance)) / (ref.shape[0])
-    
+
     return error, coverage, assessed
