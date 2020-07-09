@@ -9,7 +9,7 @@ parser.add_argument(
     'calib', help='path to complete calibration file, containing rectification parameters.')
 parser.add_argument(
     'xyz', help='path to the provided ground truth xyz depthmap file.')
-parser.add_argument('save', help='path to save the resulting disparity')
+parser.add_argument('out', help='path to save the resulting disparity')
 
 
 if __name__ == "__main__":
@@ -26,4 +26,4 @@ if __name__ == "__main__":
 
     disparity_img = ptd3d_to_disparity(rot_xyz, calib['P1'], calib['P2'], size)
 
-    save_subpix_png('./test_func_dip.png', disparity_img)
+    save_subpix_png(args.out, disparity_img)
