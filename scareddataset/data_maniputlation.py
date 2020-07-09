@@ -59,4 +59,86 @@ def pts3d_to_depthmap(pts3d):
 
 def disparities_to_pts3d(disparity, calib):
     pass
+
+def ptd3d_to_disparity(pts_3d, P1, P2, size):
+    """create disparity images based on pts_3d and projection matrices of
+    rectified views.
+
+    Args:
+        pts_3d (np.ndarray): Nx3 array containing 3d points
+        P1 (np.ndarray): projection matrix of left rectified view
+        P2 (np.ndarray): projection matrix of right rectified view
+        size (tuple): size of the resulting disparity image hxw
+
+    Returns:
+        np.ndarray: disparity image.
+    """
+    
+    h,w=size
+    disparity_img = np.zeros(size)
+    
+    left_projection = project_pts(pts_3d, P1).reshape(-1,2)
+    right_projection = project_pts(pts_3d, P2).reshape(-1,2)
+    left_projection = np.nan_to_num(left_projection, nan=-1.0) #supress warnings
+    disparities = (left_projection-right_projection)[:,0]
+    
+    #find all points that project inside the image domain.
+    left_projection = np.round(left_projection)
+    valid_indexes=((left_projection[:,0]>=0) & (left_projection[:,0]<w) & (left_projection[:,1]>=0) & (left_projection[:,1]<h))
+    
+    disparity_idxs = left_projection[valid_indexes].astype(int)
+    valid_disparities = disparities[valid_indexes]
+
+    xs,ys = disparity_idxs[:,0], disparity_idxs[:,1]
+
+    disparity_img[ys,xs]=valid_disparities
+    
+    return disparity_img
+
+def project_pts(pts3d, P):
+    """project 3d points to image, according to projection matrix P
+
+    Args:
+        pts3d (np.ndarray): Nx3 array containing 3d points
+        P (np.ndarray): projection matrix
+
+    Returns:
+        np.ndarray: Nx2 array containing pixel coordinates of projected points.
+    """
+    # convert to homogeneous
+    pts3d_h = np.hstack((pts3d, np.ones((pts3d.shape[0],1))))
+    projected_pts = (P @ pts3d_h.T).T
+    # convert from homogeneous
+    projected_pts = projected_pts[:,:2]/projected_pts[:,2].reshape(-1,1)
+    return projected_pts
+
+def transform_pts(pts3d, RT):
+    """transform points using RT homogeneous matrix
+
+    Args:
+        pts3d (np.ndarray): Nx3 array containin 3d point coordinates
+        RT (np.ndarray): 4x4 homogeneous transformation matrix
+
+    Returns:
+        np.ndarray: Nx3 transformed pts3d points according to RT
+    """
+    pts3d_h = np.hstack((pts3d, np.ones((pts3d.shape[0],1))))
+    rotated_pts3d_h = (RT @ pts3d_h.T).T
+    rotated_pts3d = rotated_pts3d_h[:,:3] / (rotated_pts3d_h[:,3].reshape(-1,1))
+    return rotated_pts3d
+
+def create_RT(R=np.eye(3), T=np.zeros(3)):
+    """Create 4x4 homogeneous transformation matrix
+
+    Args:
+        R (np.ndarray, optional): 3x3 rotation matrix. Defaults to np.eye(3).
+        T (np.ndarray, optional): translation vector. Defaults to np.zeros(3).
+
+    Returns:
+        np.ndarray: 4x4 homogeneous transformation matrix
+    """
+    RT =np.eye(4)
+    RT[:3,:3]= R.copy()
+    RT[:3,3] = T.reshape(3).copy()
+    return RT
     
