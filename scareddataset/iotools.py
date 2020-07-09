@@ -47,8 +47,7 @@ def save_depthmap_xyz(save, depthmap3D):
     depthmap_path_p.parent.mkdir(parents=True, exist_ok=True)
     suf = depthmap_path_p.suffix
     if suf not in ['tiff', 'tif']:
-        warnings.warn("this functions is designed to store 3 channel depthmaps\
-                      tiff files. You are tring to store depthmap as a ." + suf
+        warnings.warn("this functions is designed to store 3 channel depthmaps tiff files. You are tring to store depthmap as a ." + suf
                       + "file")
 
     tiff.imsave(str(depthmap_path_p), depthmap3D.astype(np.float32))
@@ -74,9 +73,9 @@ def export_ply(path, scene_points, color_img=None):
     Args:
         path (pathlib.Path, str): path to store the resulting .ply file.
         scene_points (np.ndarray): Nx3 array containing location of points in 3d.
-        color_img (np.ndarray, optional): Nx3 array containing bgr color values \
-            of each points in scene_points. if not defined, all point will be \
-                colored white. Defaults to None.
+        color_img (np.ndarray, optional): Nx3 array containing bgr color values 
+        of each points in scene_points. if not defined, all point will be colored
+        white. Defaults to None.
     """
     if color_img is not None:
         assert scene_points.shape == color_img.shape
@@ -134,7 +133,7 @@ def load_subpix_png(path, scale_factor=256.0):
 
 def save_subpix_png(path, img, scale_factor=256.0):
     """save a depthmap or a disparity map as png with subpixel accuracy.
-    
+
     To achieve this, instead of saving information as 8bit image, the function
     multiplies the image by scale_facotr and stores is as a 16bit png. This
     image can be loaded and devided by the same scale_facotr to retreave subpixel
@@ -153,10 +152,6 @@ def save_subpix_png(path, img, scale_factor=256.0):
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     img = img.astype(np.float32) * scale_factor
     if np.amax(img) > (2**16)-1:
-        warning.warn("image out of range, try with a smaller scale factor. \
-                     loading this file will results in invalid values, file: "\
-                     str(path))
+        warning.warn("image out of range, try with a smaller scale factor. loading this file will results in invalid values, file: "+str(path))
     img = img.astype(np.uint16)
     cv2.imwrite(str(path), img)
-
-    return disparity
