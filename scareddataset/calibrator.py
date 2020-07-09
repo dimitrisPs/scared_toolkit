@@ -184,9 +184,7 @@ class StereoCalibrator(Calibrator):
         
         rect_calib = {'R1': R1,'R2': R2, 'P1': P1, 'P2': P2, 'Q': Q,
                       'roi1': roi1, 'roi2': roi2, 'rect_alpha':alpha}
-        print(rect_calib)
         self.calib.update(rect_calib)
-        print(self.calib)
 
     def rectify(self, left, right):
 
