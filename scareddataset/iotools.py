@@ -29,7 +29,7 @@ def load_depthmap_xyz(path):
     return depthmap.astype(np.float32)
 
 
-def save_depthmap_xyz(save, depthmap3D):
+def save_depthmap_xyz(path, depthmap3D):
     """loads depthmap in the original f
 
     Args:
@@ -46,12 +46,11 @@ def save_depthmap_xyz(save, depthmap3D):
     depthmap_path_p = Path(path).resolve()
     depthmap_path_p.parent.mkdir(parents=True, exist_ok=True)
     suf = depthmap_path_p.suffix
-    if suf not in ['tiff', 'tif']:
+    if suf not in ['.tiff', '.tif']:
         warnings.warn("this functions is designed to store 3 channel depthmaps tiff files. You are tring to store depthmap as a ." + suf
                       + "file")
-
+    depthmap3D[depthmap3D==0]=np.nan#unknown values are set to 0 in parts of code to work with .pngs
     tiff.imsave(str(depthmap_path_p), depthmap3D.astype(np.float32))
-    return depthmap
 
 
 ply_header_rgb = '''ply
