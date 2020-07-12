@@ -24,8 +24,9 @@ def load_depthmap_xyz(path):
     depthmap_path_p = Path(path).resolve()
     if not depthmap_path_p.is_file():
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT),
-                                depthmap_path)
+                                path)
     depthmap = tiff.imread(str(depthmap_path_p))
+    depthmap[depthmap==0]=np.nan
     return depthmap.astype(np.float32)
 
 
@@ -151,6 +152,6 @@ def save_subpix_png(path, img, scale_factor=256.0):
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     img = img.astype(np.float32) * scale_factor
     if np.amax(img) > (2**16)-1:
-        warning.warn("image out of range, try with a smaller scale factor. loading this file will results in invalid values, file: "+str(path))
+        warnings.warn("image out of range, try with a smaller scale factor. loading this file will results in invalid values, file: "+str(path))
     img = img.astype(np.uint16)
     cv2.imwrite(str(path), img)
