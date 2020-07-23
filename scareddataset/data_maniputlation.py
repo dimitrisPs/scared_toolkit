@@ -38,7 +38,7 @@ def depthmap_to_pts3d(depthmap, K, D=np.zeros((5,1))):
     return xyz_map.reshape(h,w,3)
 
 
-def pts3d_to_depthmap(pts3d):
+def scared_to_depthmap(pts3d):
     """covert 3 channel xyz image to 1 channel depthmap
 
     Args:

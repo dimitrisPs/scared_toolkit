@@ -1,5 +1,5 @@
 from scareddataset.iotools import load_depthmap_xyz, save_subpix_png
-from scareddataset.data_maniputlation import pts3d_to_depthmap
+from scareddataset.data_maniputlation import scared_to_depthmap
 from scareddataset.calibrator import StereoCalibrator
 import numpy as np
 import argparse
@@ -17,7 +17,7 @@ if __name__ == "__main__":
     
     scared_depthmap = load_depthmap_xyz(args.input)
     
-    depthmap_n = pts3d_to_depthmap(scared_depthmap)
+    depthmap_n = scared_to_depthmap(scared_depthmap)
     
     save_subpix_png(args.output, depthmap_n)
 
