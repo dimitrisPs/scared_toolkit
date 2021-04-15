@@ -118,6 +118,7 @@ class StereoCalibrator(Calibrator):
         self.img_size = None
         self.left_rect_map = None
         self.left_rect_map = None
+        self.rect_alpha = -1
         self.calib = {'error': None, 'image_size': None, 'K1': None, 'D1': None,
                       'K2': None, 'D2': None, 'R': None, 'T': None,
                       'E': None, 'F': None, 'R1': None, 'R2': None, 'P1': None,
@@ -175,7 +176,7 @@ class StereoCalibrator(Calibrator):
                       'K2': K2, 'D2': D2, 'R': R, 'T': T, 'E': E, 'F': F}
         self._compute_rectification_parameteres()
     
-    def _compute_rectification_parameteres(self, alpha=-1):
+    def _compute_rectification_parameters(self):
         R1, R2, P1, P2, Q, roi1, roi2 = cv2.stereoRectify(self.calib['K1'],
                                                         self.calib['D1'],
                                                         self.calib['K2'],
@@ -183,18 +184,23 @@ class StereoCalibrator(Calibrator):
                                                         self.calib['image_size'],
                                                         self.calib['R'].astype(np.float64),
                                                         self.calib['T'].astype(np.float64).reshape(3,1),
-                                                        alpha=alpha)
+                                                        alpha=self.rect_alpha)
         
         rect_calib = {'R1': R1,'R2': R2, 'P1': P1, 'P2': P2, 'Q': Q,
-                      'roi1': roi1, 'roi2': roi2, 'rect_alpha':alpha}
+                      'roi1': roi1, 'roi2': roi2, 'rect_alpha':self.rect_alpha}
         self.calib.update(rect_calib)
 
-    def rectify(self, left, right):
-
-        if self.left_rect_map is None:
+    def rectify(self, left, right, alpha=-1):
+        
+        if alpha != self.rect_alpha:
+            self.left_rect_map= None
+            self.calib['R1'] = None
+            self.rect_alpha = alpha
+            
+        if (self.left_rect_map is None):
             self.calib['image_size']=left.shape[:2]
             if self.calib['R1'] is None:
-                self._compute_rectification_parameteres()
+                self._compute_rectification_parameters()
             self.left_rect_map = cv2.initUndistortRectifyMap(self.calib['K1'],
                                                              self.calib['D1'],
                                                              self.calib['R1'],

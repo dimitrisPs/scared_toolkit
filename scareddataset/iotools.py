@@ -7,6 +7,8 @@ from pathlib import Path
 import errno
 import os
 
+import plyfile
+
 
 def load_depthmap_xyz(path):
     """loads depthmap in the original f
@@ -82,12 +84,14 @@ def export_ply(path, scene_points, color_img=None):
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     path = str(path)
     lines = []
-    scene_points[scene_points == np.inf] = 0
-    scene_points[scene_points == -np.inf] = 0
+    scene_points[scene_points == np.inf] = np.nan
+    scene_points[scene_points == -np.inf] = np.nan
+    scene_points[scene_points == 0] = np.nan
+    
     with open(path, 'w') as ply:
         for i in range(scene_points.shape[0]):
             entry = scene_points[i]
-            if (np.equal(entry, -np.array([0., 0., 0.])).all()):
+            if np.isnan(entry).any():
                 continue
             if color_img is None:
                 bgr = [255, 255, 255]
@@ -99,6 +103,24 @@ def export_ply(path, scene_points, color_img=None):
         ply.write(ply_header_rgb.format(len(lines)))
         for line in lines:
             ply.write(line)
+            
+def load_ply(path):
+    """load only vertexes from ply file.
+
+    Args:
+        path (pathlib.Path, str): path to .ply file to load.
+        
+    Returns:
+        nd.array: Nx3 array containing vertexes in loaded ply file.
+    """
+    path = str(path)
+    pts3d_ply = plyfile.PlyData.read(path)
+    pts_3d=[]
+    for i, elem in enumerate(pts3d_ply['vertex']):
+        pts_3d.append(list(elem))
+    pts_3d = np.asarray(pts_3d)
+    
+    return pts_3d
 
 
 def load_subpix_png(path, scale_factor=256.0):
@@ -152,6 +174,7 @@ def save_subpix_png(path, img, scale_factor=256.0):
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     img = img.astype(np.float32) * scale_factor
     if np.amax(img) > (2**16)-1:
-        warnings.warn("image out of range, try with a smaller scale factor. loading this file will results in invalid values, file: "+str(path))
+        # warnings.warn("image out of range("+ str(np.amax(img)/scale_factor)+"), try with a smaller scale factor. loading this file will results in invalid values, file: "+str(path),)
+        img[img>(2**16)-1]=0
     img = img.astype(np.uint16)
     cv2.imwrite(str(path), img)

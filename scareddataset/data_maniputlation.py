@@ -1,5 +1,7 @@
 import numpy as np
 import cv2
+from scipy.interpolate import griddata
+
 
 
 def depthmap_to_pts3d(depthmap, K, D=np.zeros((5,1))):
@@ -55,6 +57,36 @@ def scared_to_depthmap(pts3d):
     depthmap = np.sqrt(np.sum(pts3d**2, axis=1))
     return depthmap.reshape(h,w)
 
+def pts3d_to_depthmap(pts3d, K, D, size):
+    """create depthmap projecting 3d points to an image location at origin, 
+    defined by camera matrix K with distortion coefficients D and size=size
+
+    Args:
+        pts3d (np.ndarray): Nx3 Nx3 array containing 3d points
+        K (np.ndarray): camera matrix.
+        D (np.ndarray): distortion coefficients.
+        size (tuple): size of the resulting disparity image hxw
+    Returns:
+        np.ndarray: hxw depthmap. each element is the length of the vector 
+        starting from camera center and end up in a point in 3d. Each such vector
+        passes through a pixel in image plane. 
+    """
+    h,w = size
+    depthmap =np.zeros((h,w))
+    scared_depthmap =np.zeros((h,w,3))
+    img_pts = cv2.projectPoints(pts3d, np.eye(3), np.zeros(3), K, D)[0].squeeze()
+    
+    img_pts = np.round(img_pts)
+    valid_indexes=((img_pts[:,0]>=0) & (img_pts[:,0]<w) & (img_pts[:,1]>=0) & (img_pts[:,1]<h))
+    depthmap_idxs = img_pts[valid_indexes].astype(int)
+    valid_pts3d = pts3d[valid_indexes]
+    xs,ys = depthmap_idxs[:,0], depthmap_idxs[:,1]
+    scared_depthmap[ys,xs]=valid_pts3d
+    scared_depthmap.reshape(h,w,3)
+    depthmap = scared_to_depthmap(scared_depthmap)
+
+
+    return depthmap, scared_depthmap
 
 def ptd3d_to_disparity(pts_3d, P1, P2, size):
     """create disparity images based on pts_3d and projection matrices of
@@ -168,4 +200,17 @@ def create_RT(R=np.eye(3), T=np.zeros(3)):
     RT[:3,:3]= R.copy()
     RT[:3,3] = T.reshape(3).copy()
     return RT
+
+def interpolate_missing_1ch(img_1ch):
+    a = img_1ch.copy()
+    a[a==0]=np.nan
+
+    #interpolate zero values if possible.
+    x, y = np.indices(a.shape)
+    interp = np.array(a)
+    interp[np.isnan(interp)] = griddata(
+        (x[~np.isnan(a)], y[~np.isnan(a)]), # points we know
+        a[~np.isnan(a)],                    # values we know
+        (x[np.isnan(a)], y[np.isnan(a)]))   # points to interpolate
+    return interp
     

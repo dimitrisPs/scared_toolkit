@@ -31,7 +31,7 @@ if __name__ == '__main__':
     if left is None: raise FileNotFoundError
     if right is None: raise FileNotFoundError
     
-    rect_left, rect_right = stereo_calibrator.rectify(left, right)
+    rect_left, rect_right = stereo_calibrator.rectify(left, right, 0.9)
 
     left_out_path = export_dir / (left_path.stem + '_rectified.png')
     right_out_path = export_dir / (right_path.stem + '_rectified.png')
