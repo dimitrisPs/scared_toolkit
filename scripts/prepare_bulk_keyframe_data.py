@@ -9,10 +9,10 @@ from scareddataset.data_maniputlation import ptd3d_to_disparity, create_RT, tran
 
 parser = argparse.ArgumentParser(description='unpacks data folders and split data.')
 parser.add_argument('data_folder', help='path to data folder containing video and gt tar file.')
+parser.add_argument('--rect_alpha', help='opencv stereo rectification alpha', default=0.9, type=float)
 
 if __name__ == "__main__":
     args= parser.parse_args()
-
 
     root_dir = Path(args.data_folder).resolve()
     gt_dir = root_dir / 'ground_truth'
@@ -56,7 +56,7 @@ if __name__ == "__main__":
             break
         left = frame[:1024]
         right= frame[1024:]
-        left_rect, right_rect = calibrator.rectify(left, right, 0.9)
+        left_rect, right_rect = calibrator.rectify(left, right, args.rect_alpha)
         
         cv2.imwrite(str(left_dir / ('{:06d}.png'.format(i))), left)
         cv2.imwrite(str(right_dir / ('{:06d}.png'.format(i))), right)

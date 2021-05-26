@@ -1,4 +1,5 @@
 import argparse
+from pathlib import Path
 from scareddataset.calibrator import StereoCalibrator
 from scareddataset.data_maniputlation import ptd3d_to_disparity, transform_pts, create_RT
 from scareddataset.iotools import save_subpix_png, load_depthmap_xyz
@@ -18,6 +19,7 @@ parser.add_argument('rect_right',
 parser.add_argument('disparity', help='path to store the resulting disparity.')
 parser.add_argument('full_calib',
                     help='path to store the new calibation file, containing rectification parameters.')
+parser.add_argument('--rect_alpha', help='opencv stereo rectification alpha', default=0.9, type=float)
 
 
 if __name__ == "__main__":
@@ -28,7 +30,7 @@ if __name__ == "__main__":
 
     calibrator = StereoCalibrator()
     calib = calibrator.load(args.calib)
-    rect_left, rect_right = calibrator.rectify(left, right)
+    rect_left, rect_right = calibrator.rectify(left, right, args.rect_alpha)
 
     pts3d = load_depthmap_xyz(args.scared_gt)
     size = pts3d.shape[:2]
@@ -37,6 +39,10 @@ if __name__ == "__main__":
     rot_pts3d = transform_pts(pts3d, create_RT(R=calib['R1']))
     disparity_img = ptd3d_to_disparity(
         rot_pts3d, calib['P1'], calib['P2'], size)
+
+
+    Path(args.rect_left).parent.mkdir(parents=True, exist_ok=True)
+    Path(args.rect_right).parent.mkdir(parents=True, exist_ok=True)
 
     cv2.imwrite(args.rect_left, rect_left)
     cv2.imwrite(args.rect_right, rect_right)

@@ -1,10 +1,25 @@
 import numpy as np
 import cv2
 from scipy.interpolate import griddata
+import plyfile
+
+plyfile.
 
 
 
-def depthmap_to_pts3d(depthmap, K, D=np.zeros((5,1))):
+
+
+# disparity, depthmap, image3d to pointcloud
+o3d.loa
+# pointcloud to disparity, depthmap, image3d
+
+def image_3d_to_pointcloud(image_3d):
+
+
+
+
+
+def depthmap_to_image_3d(depthmap, K, D=np.zeros((5,1))):
     """Converts one depthmap to xyz image.
     
     Given a Depthmap this functions reprojects points to 3d using the calibration
@@ -40,22 +55,17 @@ def depthmap_to_pts3d(depthmap, K, D=np.zeros((5,1))):
     return xyz_map.reshape(h,w,3)
 
 
-def scared_to_depthmap(pts3d):
+def image_3d_to_depthmap(image_3d):
     """covert 3 channel xyz image to 1 channel depthmap
 
     Args:
-        pts3d (np.ndarray): hxwx3 xyz image, each image point encodes the 3d
+        image_3d (np.ndarray): hxwx3 xyz image, each image point encodes the 3d
         location of the point is the projection of.
 
     Returns:
-        np.ndarray: hxw depthmap. each element is the length of the vector 
-        starting from camera center and end up in a point in 3d. Each such vector
-        passes through a pixel in image plane. 
+        np.ndarray: hxw depthmap.
     """
-    h, w, c = pts3d.shape
-    pts3d = pts3d.reshape(-1,3)
-    depthmap = np.sqrt(np.sum(pts3d**2, axis=1))
-    return depthmap.reshape(h,w)
+    return image_3d[:,:,2]
 
 def pts3d_to_depthmap(pts3d, K, D, size):
     """create depthmap projecting 3d points to an image location at origin, 
