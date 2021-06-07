@@ -2,6 +2,8 @@ import cv2
 import argparse
 import numpy as np
 from pathlib import Path
+import errno
+import os
 
 
 class Calibrator:
@@ -41,8 +43,11 @@ class Calibrator:
         fs_write.release()
 
     def load(self, path):
-        fs_read = cv2.FileStorage(path, cv2.FILE_STORAGE_READ)
-        # TODO:check is file exist
+
+        if not Path(path).is_file():
+            raise FileNotFoundError(
+                errno.ENOENT, os.strerror(errno.ENOENT), str(path))
+        fs_read = cv2.FileStorage(str(path), cv2.FILE_STORAGE_READ)
         for k in self.calib.keys():
             if k =='error':
                 continue
@@ -96,9 +101,25 @@ class MonoCalibrator(Calibrator):
         self.calib = {'error': reprojection_error, 'K': K, 'D': D,
                       'rvecs': np.asarray(rvecs), 'tvecs': np.asarray(tvecs)}
 
-    def undistort(self, img):
-        print("Not implemented")
-        return None
+    def undistort(self, img, new_K=False):
+        if new_K:
+            h, w = img.shape[:2]
+            K, roi = cv.getOptimalNewCameraMatrix(self.calib['K'],
+                                                    self.calib['D'],
+                                                    (w,h),
+                                                    1,
+                                                    (w,h))
+        else:
+            K = self.calib['K']
+        dst = cv2.undistort(img, self.calib['K'], self.calib['D'], None, K)
+        if new_K:
+            x, y, w, h = roi
+            dst = dst[y:y+h, x:x+w]
+        return dst, K
+    
+    def set_calib(self, K, D):
+        self.calib['K']=K.copy()
+        self.calib['D']=D.copy()
 
 
 class StereoCalibrator(Calibrator):
@@ -176,7 +197,9 @@ class StereoCalibrator(Calibrator):
                       'K2': K2, 'D2': D2, 'R': R, 'T': T, 'E': E, 'F': F}
         self._compute_rectification_parameteres()
     
-    def _compute_rectification_parameters(self):
+    def _compute_rectification_parameters(self,alpha=-1):
+        self.rect_alpha=alpha
+        assert self.calib['image_size'] is not None
         R1, R2, P1, P2, Q, roi1, roi2 = cv2.stereoRectify(self.calib['K1'],
                                                         self.calib['D1'],
                                                         self.calib['K2'],
@@ -185,7 +208,6 @@ class StereoCalibrator(Calibrator):
                                                         self.calib['R'].astype(np.float64),
                                                         self.calib['T'].astype(np.float64).reshape(3,1),
                                                         alpha=self.rect_alpha)
-        
         rect_calib = {'R1': R1,'R2': R2, 'P1': P1, 'P2': P2, 'Q': Q,
                       'roi1': roi1, 'roi2': roi2, 'rect_alpha':self.rect_alpha}
         self.calib.update(rect_calib)
@@ -221,3 +243,20 @@ class StereoCalibrator(Calibrator):
         return left_rect, right_rect
 
     # TODO:write functions for visualisation
+    
+    
+def undistort(img, K, D, new_K=False):
+    if new_K:
+        h, w = img.shape[:2]
+        n, roi = cv2.getOptimalNewCameraMatrix(K,
+                                                D,
+                                                (w,h),
+                                                1,
+                                                (w,h))
+    else:
+        Kn = K.copy()
+    dst = cv2.undistort(img, K, D, None, Kn)
+    if new_K:
+        x, y, w, h = roi
+        dst = dst[y:y+h, x:x+w]
+    return dst, Kn
