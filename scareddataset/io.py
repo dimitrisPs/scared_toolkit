@@ -105,7 +105,7 @@ class Img3dTarLoader:
         del self.num_frames
 
 
-class stereo_video_capture(cv2.VideoCapture):
+class StereoVideoCapture(cv2.VideoCapture):
     """ Wraps cv2.VideoCapture to read stereo videos stored as stacked images"""
 
     def __init__(
