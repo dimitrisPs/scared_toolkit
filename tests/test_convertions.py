@@ -1,9 +1,14 @@
 from scareddataset import convertions as cvt
 from scareddataset import io as sio
 import numpy as np
+import json
 
+def read_frame_data(path):
+    with open(path,'r') as f:
+        data = json.load(f)
+    return data
 
-servct_calib = sio.read_frame_data('./data/servdata/001_calib.json')
+servct_calib = read_frame_data('./data/servdata/001_calib.json')
 
 
 def test_accuracy_ptcloud_to_img3d():
