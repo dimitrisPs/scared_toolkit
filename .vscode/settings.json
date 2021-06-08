@@ -1,3 +1,11 @@
 {
-    "python.pythonPath": "/home/dimitris/anaconda3/envs/scareddatatk/bin/python"
+    "python.pythonPath": "/home/dimitrisps/anaconda3/envs/scaredtk/bin/python",
+    "python.testing.pytestArgs": [
+        "tests"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.nosetestsEnabled": false,
+    "python.testing.pytestEnabled": true,
+    "python.languageServer": "Pylance",
+    "python.formatting.provider": "black"
 }
