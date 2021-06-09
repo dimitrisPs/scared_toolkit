@@ -1,40 +1,77 @@
-# SCARED_dataset_toolkit
-code to manipulate scared data
+# SCARED dataset toolkit
 
 
-# Data convension
-
-all data are loaded and manipulated as 32 bit floats.
-in cases where values are not available, we omit them for point clouds and use 
-nan for 3D images, depthmaps and disparities. 
-To facilitate sample preview, easy we store resulting depthmaps and disparities
-as 16bit uint pngs. In order to store subpixel information we scale samples 
-in a similar way with kitti.
+This repository contains code to help you generate additional data, such as
+disparity and depthmap samples. The repository also provides tools to create the
+interpolated ground truth sequences based on keyframe ground truth data.
 
 
-# scared data format
-Keyframes provide pointclouds stored as .obj in ascii mode. Those pointclouds 
-were generated from the 3Dimages and contain a nan vertices as the keyframe
-3dimages do. When loading those .obj we filter out nan values
+## Data convension
 
-Keyframe 3Dimages seem to have been constructed by triangulating pixels between 
-left and right image views. We do not know details about the process and whether
-or not the the distortion information was used. Unknown pixels are stored as nan
-Using the Z channel(depthmap) and the calibration parameters to reconstruct the 
-scene does not result to the same information stored in the 3dImages. Possibly
-because 3d information was a result of triangulation between views which we 
-cannot do since we do not have access to pixel correspondences.
+We've established a data format to facilitate development. Depth and disparity
+data are loaded and manipulated as floats. If disparity or depth information is
+not available for a specific pixel, its values are represented by nan.
+
+### Pointclouds
+The .obj pointclouds, provided with every keyframe, contain HxW points,
+with H, W the height and with of the monocular frame. Since SCARED does not
+provide full coverage, some of those vertices are represented as nan. Our
+loading functions remove such points which results to much smaller pointclouds
+containing only points for which we know ground truth information. Although 
+not used by our scripts, we provide code to save pointclouds as ply. In that 
+case we save only points with known ground truth.
+
+### 3D Images (.tiff)
+The provided .tiff keyframe files encode unknown values as nan, whereas the 
+interpolated .tiff files in the sequences zeros(we haven't check every sequence).
+Since we want all unknown points to have nan values, when loading, our functions
+replace 0 vectors with nan values.
+
+### Disaprity and depthmaps (.png)
+
+To facilitate sample preview we store both generated disparity and depthmaps
+as 16bit uint pngs. All depth values are in mm distance and disparity is measured
+as the difference in y directions between the coordinates of a point in the left
+image with its corresponding point in the right image. In order to maintain
+decimal information when storing samples as .png, we scale the disparity and
+depth values by a configurable argument called scale_factor(default is 256.0)
+this maps a range of 0-255 to a range of 0-65280 and then store them as 16bit
+unsigned integers. If there is a need of storing values greater than 255, one 
+can adjust the the scale factor to something that will cast the sample range
+to span values 0-2^16. Nan values are stored as 0. When loading such samples the 
+scale_factor is used to remap 0-2^16 values to the correct range and 0 values 
+are replaced by nan. This process is obviously lossy but it maintains correct
+information up to 2 decimal points when a scale_factor of 256.0 is used.
 
 
-The interpolated ground truth sequences have a different format. Unknown depth
-information is stored as zero 3D vectors. Because the ground truth of the keyframe
-was used to create all the following frames, the initial pointcloud was transformed
-based on the kinematics and projected to the left and right frame of reference
+## Provided function
 
-CHECK IF THE USED DISTORTION COEFFICIENTS. 
+The repository, provides python code to load and save samples provided with
+the original dataset as well as functions to store and load depthmap and
+disparity samples with decimal information encoded in 16-bit uint .png.
+
+In addition we provide code to manipulate samples and create additional data,
+such as disparity samples. Included functions are able to generate depthmaps, 
+3D images, disparities and pointclouds from any of the aforementioned domains.
+Still if you are to use the the provided functions and not the scripts you need
+to check the validity of the outcome. For instace, `ptcloud_to_disparity()` can 
+generate a disparity image based on a pointcloud, the result is meaningles if 
+the provided pointcloud is not rotated to the rectified frame of reference and
+the Projection matrices are not obtained from the stereo rectification process.
 
 
-# Testing
+## Usage
+
+### Generate keyframe
+
+### Extract ground truth sequence
+
+### Generate ground truth sequence
+
+
+
+
+## Testing
 
 It's really hard to write tests for conversions and use the provided data.
 This is because we do not know exactly the method used to create the 3dimages.
