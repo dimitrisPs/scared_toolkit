@@ -222,7 +222,7 @@ class StereoCalibrator(Calibrator):
         if (self.left_rect_map is None):
             self.calib['image_size']=left.shape[:2]
             if self.calib['R1'] is None:
-                self._compute_rectification_parameters()
+                self._compute_rectification_parameters(self.rect_alpha)
             self.left_rect_map = cv2.initUndistortRectifyMap(self.calib['K1'],
                                                              self.calib['D1'],
                                                              self.calib['R1'],
