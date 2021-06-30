@@ -71,11 +71,11 @@ if __name__=='__main__':
                                                    calib['K1'],
                                                    np.zeros(5),
                                                    left_img.shape[:2])
-            if (args.coverage_threshold==0) or ((np.count_nonzero(~np.isnan(depthmap))/pixel_num) >= args.coverage_threshold):  
-                    Path(out_dir/'left').mkdir(exist_ok=True, parents=True)
-                    cv2.imwrite(str(out_dir/'left'/f'{fid:06d}.png'), left_img)
-                    sio.save_subpix_png(out_dir/'depthmap'/f'{fid:06d}.png',
-                                        depthmap, args.scale_factor)
+                if (args.coverage_threshold==0) or ((np.count_nonzero(~np.isnan(depthmap))/pixel_num) >= args.coverage_threshold):  
+                        Path(out_dir/'left').mkdir(exist_ok=True, parents=True)
+                        cv2.imwrite(str(out_dir/'left'/f'{fid:06d}.png'), left_img)
+                        sio.save_subpix_png(out_dir/'depthmap'/f'{fid:06d}.png',
+                                            depthmap, args.scale_factor)
                     
             if args.undistort:
                 left_rgb_undistored, _ = undistort(left_img,
@@ -86,12 +86,12 @@ if __name__=='__main__':
                                                                left_img.shape[:2])
                 
                 
-            if (args.coverage_threshold==0) or ((np.count_nonzero(~np.isnan(depthmap_undistorted))/pixel_num) >= args.coverage_threshold):       
-                    sio.save_subpix_png(out_dir/'depthmap_undistorted'/f'{fid:06d}.png',
-                                        depthmap_undistorted, args.scale_factor)
-                    Path(out_dir/'left_undistorted').mkdir(exist_ok=True, parents=True)
-                    cv2.imwrite(str(out_dir/'left_undistorted'/f'{fid:06d}.png'),
-                                    left_rgb_undistored)
+                if (args.coverage_threshold==0) or ((np.count_nonzero(~np.isnan(depthmap_undistorted))/pixel_num) >= args.coverage_threshold):       
+                        sio.save_subpix_png(out_dir/'depthmap_undistorted'/f'{fid:06d}.png',
+                                            depthmap_undistorted, args.scale_factor)
+                        Path(out_dir/'left_undistorted').mkdir(exist_ok=True, parents=True)
+                        cv2.imwrite(str(out_dir/'left_undistorted'/f'{fid:06d}.png'),
+                                        left_rgb_undistored)
                 
             if args.disparity:
                 left_rect, right_rect = stereo_calib.rectify(left_img, right_img,
