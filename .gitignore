@@ -130,4 +130,5 @@ dmypy.json
 
 # data folder
 
-data/*
+data/
+.vscode/

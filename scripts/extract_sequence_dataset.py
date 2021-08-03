@@ -23,8 +23,8 @@ import gc
 
 parser =argparse.ArgumentParser(description="Create keyframe dataset")
 parser.add_argument('root_dir', help="root directory under which keyframe data are stored")
-parser.add_argument('--recursive', '-r', help='scans for keyframe_* directories under root_dir and processes them all', action='store_true')
 parser.add_argument('--out_dir', help='where to store the resulting dataset, if not set, generated files will be stored in src folders')
+parser.add_argument('--recursive', '-r', help='scans for keyframe_* directories under root_dir and processes them all', action='store_true')
 parser.add_argument('--depth','-de', help='generate_depthmap in the original frame of reference', action='store_true')
 parser.add_argument('--undistort','-u', help='generate undistorted depthmap and left rgb in the original frame of reference', action='store_true')
 parser.add_argument('--disparity','-di', help='generate rectified views and disparity maps', action='store_true')
