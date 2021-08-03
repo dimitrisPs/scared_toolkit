@@ -1,7 +1,7 @@
 from pathlib import Path
-from scareddataset.calibrator import StereoCalibrator, undistort
-import scareddataset.io as sio
-import scareddataset.convertions as cvt
+from scaredtk.calibrator import StereoCalibrator, undistort
+import scaredtk.io as sio
+import scaredtk.convertions as cvt
 import cv2
 import numpy as np
 import argparse
@@ -10,15 +10,16 @@ import gc
 
 
 # this script will generate depthmaps and disparities without using the provided
-# ground truth sequences using only the keyframe files, rgb.mp4 and
+# ground truth sequences and instead use only the keyframe files, rgb.mp4 and
 # frame_data.tar.gz. This script facilitates data portability as the provided
 # scene_points.tar.gz are generated using each keyframe's point_cloud.obj
-# and frame_data.tar.gz thus can get generated locally from those. In addition
-# a refined pointcloud can be provided by the user to generate the sequence.
-# it is not recommended to use this script to extract test data because we could
+# and frame_data.tar.gz thus the ground truth sequcnes can get generated locally.
+# In addition, a refined pointcloud can be provided by the user to generate the 
+# sequence. It is not recommended to use this script to extract test data because we could
 # not always replicate exactly the provided ground truth files, possibly due to
 # arithmetic presision. For the test sequence files use the dataset extruction
 # script.
+
 
 parser =argparse.ArgumentParser(description="Create keyframe dataset")
 parser.add_argument('root_dir', help="root directory under which keyframe data are stored")
@@ -29,7 +30,6 @@ parser.add_argument('--undistort','-u', help='generate undistorted depthmap and 
 parser.add_argument('--disparity','-di', help='generate rectified views and disparity maps', action='store_true')
 parser.add_argument('--alpha', help='alpha parameter to use during stereo rectification, default=-1', type=float, default=-1)
 parser.add_argument('--scale_factor', help='scale factor to use when storing subpixel pngs, default=256.0', type=float, default=256.0)
-parser.add_argument('--coverage_threshold', help='drop frames with coverage less than amount [0-1]', default=0, type=float)
 
 
 if __name__=='__main__':
@@ -70,12 +70,11 @@ if __name__=='__main__':
 
             if args.depth:
                 depthmap = cvt.img3d_to_depthmap(gt_img3d)
-                coverage = np.count_nonzero(~np.isnan(depthmap))/pixel_num
-                if (args.coverage_threshold==0) or ((np.count_nonzero(~np.isnan(depthmap))/pixel_num) >= args.coverage_threshold):   
-                    Path(out_dir/'left').mkdir(exist_ok=True, parents=True)
-                    cv2.imwrite(str(out_dir/'left'/f'{fid:06d}.png'), left_img)
-                    sio.save_subpix_png(out_dir/'depthmap'/f'{fid:06d}.png',
-                                        depthmap, args.scale_factor)
+ 
+                Path(out_dir/'left').mkdir(exist_ok=True, parents=True)
+                cv2.imwrite(str(out_dir/'left'/f'{fid:06d}.png'), left_img)
+                sio.save_subpix_png(out_dir/'depthmap'/f'{fid:06d}.png',
+                                    depthmap, args.scale_factor)
             gt_ptcloud = cvt.img3d_to_ptcloud(gt_img3d)        
             if args.undistort:
                 left_rgb_undistored, _ = undistort(left_img,
@@ -87,12 +86,11 @@ if __name__=='__main__':
                                                                left_img.shape[:2])
                 
                 
-                if (args.coverage_threshold==0) or ((np.count_nonzero(~np.isnan(depthmap_undistorted))/pixel_num) >= args.coverage_threshold):  
-                    sio.save_subpix_png(out_dir/'depthmap_undistorted'/f'{fid:06d}.png',
-                                        depthmap_undistorted, args.scale_factor)
-                    Path(out_dir/'left_undistorted').mkdir(exist_ok=True, parents=True)
-                    cv2.imwrite(str(out_dir/'left_undistorted'/f'{fid:06d}.png'),
-                                    left_rgb_undistored)
+                sio.save_subpix_png(out_dir/'depthmap_undistorted'/f'{fid:06d}.png',
+                                    depthmap_undistorted, args.scale_factor)
+                Path(out_dir/'left_undistorted').mkdir(exist_ok=True, parents=True)
+                cv2.imwrite(str(out_dir/'left_undistorted'/f'{fid:06d}.png'),
+                                left_rgb_undistored)
                 
             if args.disparity:
                 left_rect, right_rect = stereo_calib.rectify(left_img, right_img,
@@ -104,23 +102,18 @@ if __name__=='__main__':
                 disparity = cvt.ptcloud_to_disparity(ptcloud_rotated,
                                                     calib['P1'], calib['P2'],
                                                     right_rect.shape[:2])
-                if (args.coverage_threshold==0) or ((np.count_nonzero(~np.isnan(disparity))/pixel_num)> args.coverage_threshold):   
-                    depthmap_rectified = cvt.ptcloud_to_depthmap(ptcloud_rotated,
-                                                                calib['P1'][:,:3],
-                                                                np.zeros(5),
-                                                                right_rect.shape[:2])
-                    
-                    
-                    Path(out_dir/'left_rectified').mkdir(exist_ok=True, parents=True)
-                    Path(out_dir/'right_rectified').mkdir(exist_ok=True, parents=True)
-                    cv2.imwrite(str(out_dir/'left_rectified'/f'{fid:06d}.png'),left_rect)
-                    cv2.imwrite(str(out_dir/'right_rectified'/f'{fid:06d}.png'),right_rect)
-                    sio.save_subpix_png(out_dir/'depthmap_rectified'/f'{fid:06d}.png',
-                                        depthmap_rectified, args.scale_factor)
-                    sio.save_subpix_png(out_dir/'disparity'/f'{fid:06d}.png',
-                                        disparity, args.scale_factor)
-                stereo_calib.save(out_dir/'stereo_calib.json')    
-        # del gt_sequence
-        # print(gc.collect())
-        # print(gc.garbage)
-            
+                depthmap_rectified = cvt.ptcloud_to_depthmap(ptcloud_rotated,
+                                                            calib['P1'][:,:3],
+                                                            np.zeros(5),
+                                                            right_rect.shape[:2])
+                
+                
+                Path(out_dir/'left_rectified').mkdir(exist_ok=True, parents=True)
+                Path(out_dir/'right_rectified').mkdir(exist_ok=True, parents=True)
+                cv2.imwrite(str(out_dir/'left_rectified'/f'{fid:06d}.png'),left_rect)
+                cv2.imwrite(str(out_dir/'right_rectified'/f'{fid:06d}.png'),right_rect)
+                sio.save_subpix_png(out_dir/'depthmap_rectified'/f'{fid:06d}.png',
+                                    depthmap_rectified, args.scale_factor)
+                sio.save_subpix_png(out_dir/'disparity'/f'{fid:06d}.png',
+                                    disparity, args.scale_factor)
+            stereo_calib.save(out_dir/'stereo_calib.json')

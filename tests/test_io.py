@@ -2,7 +2,7 @@
 import numpy as np
 from pathlib import Path
 
-from scareddataset import io as sio
+from scaredtk import io as sio
 
 
 def test_save_tiff():

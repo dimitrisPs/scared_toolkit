@@ -1,7 +1,7 @@
 from pathlib import Path
-from scareddataset.calibrator import StereoCalibrator, undistort
-import scareddataset.io as sio
-import scareddataset.convertions as cvt
+from scaredtk.calibrator import StereoCalibrator, undistort
+import scaredtk.io as sio
+import scaredtk.convertions as cvt
 import cv2
 import numpy as np
 import argparse

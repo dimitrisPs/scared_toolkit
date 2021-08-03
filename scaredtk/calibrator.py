@@ -104,7 +104,7 @@ class MonoCalibrator(Calibrator):
     def undistort(self, img, new_K=False):
         if new_K:
             h, w = img.shape[:2]
-            K, roi = cv.getOptimalNewCameraMatrix(self.calib['K'],
+            K, roi = cv2.getOptimalNewCameraMatrix(self.calib['K'],
                                                     self.calib['D'],
                                                     (w,h),
                                                     1,
