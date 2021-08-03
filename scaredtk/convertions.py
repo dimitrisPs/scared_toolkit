@@ -302,11 +302,11 @@ def depthmap_to_img3d(
     pixel_loc = np.mgrid[0:w, 0:h].transpose(2, 1, 0).astype(np.float64)
     pixel_loc = pixel_loc.reshape(-1, 2)
 
-    # project pixels to the image plane. Because we do not provide a new camera 
+    # project pixels to the image plane. Because we do not provide a new camera
     # matrix, the opencv function returns points in normalized coordinates which
     # can be used to contruct the homogeneous representation of those points.
     image_plane_pts = cv2.undistortPoints(pixel_loc, K, D).squeeze()
-    
+
     # express normlaized points in homogeneous coordinates.
     image_plane_pts_h = np.hstack(
         (image_plane_pts, np.ones((image_plane_pts.shape[0], 1)))
@@ -393,3 +393,68 @@ def create_RT(R: np.ndarray = np.eye(3), T: np.ndarray = np.zeros(3)) -> np.ndar
     RT[:3, :3] = R.copy()
     RT[:3, 3] = T.reshape(3).copy()
     return RT
+
+
+def ptcloud_to_flow(
+    pt_cloud: np.ndarray,
+    pose_1: np.ndarray,
+    pose_2: np.ndarray,
+    size: Tuple[int, int],
+    K: np.ndarray,
+    D: np.ndarray,
+) -> np.ndarray:
+    """Generate flow map between pose_1 and pose_2 based on pt_cloud
+
+    Args:
+        pt_cloud (np.ndarray): N element pointcloud represented as a Nx3 array
+        pose_1 (np.ndarray): 4x4 homogeneous transformation matrix describing 
+        how to transform the pt_cloud to the pose at t=0
+        pose_2 (np.ndarray): 4x4 homogeneous transformation matrix describing 
+        how to transform the pt_cloud to the pose at t=t+1
+        size (Tuple[int, int]): Height, Width of the resulting flow map.
+        K (np.ndarray): Camera matrix of the target projection view
+        D (np.ndarray): Distortion coefficients of the target projection view
+        
+
+    Returns:
+        np.ndarray: [description]
+    """
+    h, w = size
+    # channel sequence: u,v, nan values where we do not have flow info
+    forward_flow = np.full((h, w, 2), fill_value=np.nan)
+
+    # tranform points in space according to the provided kinematics
+    pt_cloud1 = transform_pts(pt_cloud, pose_1)
+    pt_cloud2 = transform_pts(pt_cloud, pose_2)
+
+    # project the rotated pointclouds into two consecutive frames
+    projection_coordinates1 = cv2.projectPoints(
+        pt_cloud1, np.eye(3), np.zeros(3), K, D
+    )[0].squeeze()
+    projection_coordinates2 = cv2.projectPoints(
+        pt_cloud2, np.eye(3), np.zeros(3), K, D
+    )[0].squeeze()
+
+    # measure projection displacement(flow) in decimal value
+    pixel_displacement = projection_coordinates2 - projection_coordinates1
+
+    # compute pixel location the flow values are going to be stored(integer)
+    projection_coordinates = np.round(projection_coordinates1)
+    valid_projection_indexes = (
+        (projection_coordinates[:, 0] >= 0)
+        & (projection_coordinates[:, 0] < w)
+        & (projection_coordinates[:, 1] >= 0)
+        & (projection_coordinates[:, 1] < h)
+    )
+    # WARNING because i compute the displacement before rounding the projection coordinates
+    # i introduce a small error of 0.5 pixels at most.
+
+    projection_coordinates = projection_coordinates1[valid_projection_indexes].astype(
+        int
+    )
+    visible_flow = pixel_displacement[valid_projection_indexes]
+
+    xs, ys = projection_coordinates[:, 0], projection_coordinates[:, 1]
+
+    forward_flow[ys, xs] = visible_flow
+    return forward_flow

@@ -375,3 +375,60 @@ def save_ptcloud_as_ply(
         PlyData([el], text=True).write(str(path))
     return path
 
+
+def save_flow_kitti(path: Union[Path, str], flow: np.ndarray) -> Path:
+    """save flow map following the kitti format
+    
+    This function is used to save 3 channel float depthmaps as 16-bit uint .png
+    images to facilitate previewing, while encoding decimal information.
+    The first channel endodes displacement in the vertical direction, the second
+    displacement in the horizontal direction and the third is zero to complete
+    the 3 channel png image. To encode decimal information, all flow values are 
+    multiplied by 64 and then shifted by 2^15(following the kitti format).
+
+    Args:
+        path (Union[Path, str]): path to store flow as a .png file
+        flow (np.ndarray): the flowmap 
+
+    Returns:
+        Path: the input path argument as a pathlib.Path 
+    """
+    path = Path(path)
+    h, w, c = flow.shape
+    assert c == 2
+    np.nan_to_num(flow)
+    flow = (flow * 64) + 2 ** 15
+    flow = np.dstack((np.zeros((h, w)), flow[:, :, ::-1]))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    cv2.imwrite(str(path), flow.astype(np.uint16))
+    return path
+
+
+def read_flow_kitti(path: Union[Path, str]) -> np.ndarray:
+    """Read flow files stored following the kitti format
+    
+    This function loads flowmaps stored following the kitti flow format. 
+
+    Args:
+        path (Union[Path, str]): path to read the flow map from 
+
+    Returns:
+        np.ndarray: hxwx2 array containing the flow map values
+    """
+    flow = cv2.imread(str(path), -1).astype(np.float32)[:, :, ::-1]
+    flow[flow == [0, 0, 0]] = [np.nan]
+
+    flow = (flow - 2 ** 15) / 64
+    flow[flow == [0, 0, 0]] = [np.nan]
+    return flow[:, :, :2]
+
+
+def save_flow_tiff(path: Union[Path, str], flow: np.ndarray) -> Path:
+    path = Path(path)
+    path.parent.mkdir(exist_ok=True, parents=True)
+    tiff.imwrite(str(path), flow)
+    return path
+
+
+def read_flow_tiff(path: Union[Path, str]) -> np.ndarray:
+    return tiff.imread(str(path))

@@ -1,7 +1,7 @@
 # SCARED dataset toolkit
 
 This repository contains Unofficial code to help you generate additional data,
-such as disparity and depthmap samples in the left rectified frame of reference.
+such as disparity, depthmap and flow samples in the left rectified frame of reference.
 Additionally tools are provided to generate the interpolated ground truth
 sequences based on keyframe ground truth data.
 
@@ -185,4 +185,14 @@ of this script should be limited to only the training datasets and not the test 
 
 ```bash
 python -m scripts.generate_sequence_dataset root_dir [--out_dir] [--recursive] [--depth] [--undistort] [--disparity] [--pt_cloud] [--alpha] [--scale_factor]
+```
+
+### Generate flow sequence
+
+This scripts can be used to generate flow maps and store them in the same format
+used by kitti. The command line interface is similar to the previous scripts
+but only supports flow generation in the original frame of reference.
+
+```bash
+python -m scripts.generate_flow_sequence root_dir [--recursive] [--out_dir] [--ptcloud]
 ```
