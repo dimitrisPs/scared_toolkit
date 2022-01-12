@@ -1,13 +1,12 @@
 from pathlib import Path
-from scaredtk.calibrator import StereoCalibrator, undistort
+from scaredtk.calibrator import StereoCalibrator
+from scaredtk.calibrator import undistort as undistortm
 import scaredtk.io as sio
 import scaredtk.convertions as cvt
 import cv2
 import numpy as np
 import argparse
 from tqdm import tqdm
-import gc
-
 
 # this script will generate depthmaps and disparities without using the provided
 # ground truth sequences and instead use only the keyframe files, rgb.mp4 and
@@ -29,67 +28,96 @@ parser.add_argument('--depth','-de', help='generate_depthmap in the original fra
 parser.add_argument('--undistort','-u', help='generate undistorted depthmap and left rgb in the original frame of reference', action='store_true')
 parser.add_argument('--disparity','-di', help='generate rectified views and disparity maps', action='store_true')
 parser.add_argument('--alpha', help='alpha parameter to use during stereo rectification, default=-1', type=float, default=-1)
-parser.add_argument('--scale_factor', help='scale factor to use when storing subpixel pngs, default=256.0', type=float, default=256.0)
+parser.add_argument('--scale_factor', help='scale factor to use when storing subpixel pngs, default=128.0', type=float, default=128.0)# check if this produces a bug
 
 
-if __name__=='__main__':
+def undistort_map(K, D, size_hw):
+
+    return cv2.initUndistortRectifyMap(K,
+                                       D,
+                                       None,
+                                       K,
+                                       size_hw[::-1],
+                                       cv2.CV_32FC1)
+
+
+
+def main():
     args = parser.parse_args()
     root_dir = Path(args.root_dir)
-    #recursively find all keyframe dirs
+    #recursively find all keyframe directories
     if args.recursive:
         keyframe_dirs = [p for p in root_dir.rglob('**/keyframe_*') if p.is_dir()] 
     else:
         keyframe_dirs = [root_dir]
-        
+    
     for kf in tqdm(keyframe_dirs,desc='processed keyframes'):
+        # create output directories
         out_dir = Path(args.out_dir)/kf.parent.name/kf.name if args.out_dir is not None else kf
         out_dir.mkdir(exist_ok=True, parents=True)
         
+        # load video video, gt and calib files
         stereo_calib = StereoCalibrator()
         calib = stereo_calib.load(kf/'endoscope_calibration.yaml')
+
+        # Keyframe 5 is a single frame
+        if (kf/'data'/'rgb.mp4').is_file():
+            video_loader = sio.StereoVideoCapture(kf/'data'/'rgb.mp4')
+            tqdm.write('loading tarfile sequence, this will take a lot of time...')
+
+            # this will create a dictionary with all the available frames
+            gt_sequence = sio.Img3dTarLoader(kf/'data'/'scene_points.tar.gz')
+            frame_count = len(gt_sequence)
+        else:
+            frame_count = 1
+
+        # initialize undistortion maps to avoid calling cv2.undistort in each iteration
+        if args.undistort:
+            und_maps_left = undistort_map(calib['K1'],
+                                          calib['D1'],
+                                          (1024, 1280))
+
+
+        for frame_id in tqdm(range(frame_count), desc='processing frames', leave=False):
         
-        pose_dict = sio.load_pose_sequence(kf/'data'/'frame_data.tar.gz')
-        video_loader = sio.StereoVideoCapture(kf/'data'/'rgb.mp4')
-        
-        tqdm.write('loading tarfile sequence, this will take a lot of time...')
-        gt_sequence = sio.Img3dTarLoader(kf/'data'/'scene_points.tar.gz')
-        
-        
-        sample_sequence = [(fid, pose_dict[fid]) for fid in pose_dict.keys()]
-        
-        pixel_num = np.product(sample_sequence[0][1].shape[:2])
-        
-        for fid, pose in tqdm(sample_sequence, desc='processing frames', leave=False):
+            if frame_count !=1:
+                left_img, right_img = video_loader.read()
+                #get only the left part of the image, stored in the first 1024 rows
+                gt_img3d = gt_sequence[frame_id][:left_img.shape[0]]
+            else:
+                left_img = cv2.imread(str(kf/'Left_Image.png'))
+                right_img = cv2.imread(str(kf/'Right_Image.png'))
+                gt_img3d = sio.load_img3d(kf/'left_depth_map.tiff')
             
-            
-            left_img, right_img = video_loader.read()
-            
-            gt_img3d = gt_sequence[fid][:left_img.shape[0]]
             
             assert left_img is not None
 
             if args.depth:
                 depthmap = cvt.img3d_to_depthmap(gt_img3d)
- 
+
                 Path(out_dir/'left').mkdir(exist_ok=True, parents=True)
-                cv2.imwrite(str(out_dir/'left'/f'{fid:06d}.png'), left_img)
-                sio.save_subpix_png(out_dir/'depthmap'/f'{fid:06d}.png',
+                cv2.imwrite(str(out_dir/'left'/f'{frame_id:06d}.png'), left_img)
+                sio.save_subpix_png(out_dir/'depthmap'/f'{frame_id:06d}.png',
                                     depthmap, args.scale_factor)
-            gt_ptcloud = cvt.img3d_to_ptcloud(gt_img3d)        
+            gt_ptcloud = cvt.img3d_to_ptcloud(gt_img3d)
+
             if args.undistort:
-                left_rgb_undistored, _ = undistort(left_img,
-                                                calib['K1'], calib['D1'])
+
+                left_rgb_undistored = cv2.remap(left_img,
+                                                und_maps_left[0],
+                                                und_maps_left[1],
+                                                cv2.INTER_LINEAR)
                 
                 depthmap_undistorted = cvt.ptcloud_to_depthmap(gt_ptcloud,
-                                                               calib['K1'],
-                                                               calib['D1'],
-                                                               left_img.shape[:2])
+                                                            calib['K1'],
+                                                            calib['D1'],
+                                                            left_img.shape[:2])
                 
                 
-                sio.save_subpix_png(out_dir/'depthmap_undistorted'/f'{fid:06d}.png',
+                sio.save_subpix_png(out_dir/'depthmap_undistorted'/f'{frame_id:06d}.png',
                                     depthmap_undistorted, args.scale_factor)
                 Path(out_dir/'left_undistorted').mkdir(exist_ok=True, parents=True)
-                cv2.imwrite(str(out_dir/'left_undistorted'/f'{fid:06d}.png'),
+                cv2.imwrite(str(out_dir/'left_undistorted'/f'{frame_id:06d}.png'),
                                 left_rgb_undistored)
                 
             if args.disparity:
@@ -110,10 +138,14 @@ if __name__=='__main__':
                 
                 Path(out_dir/'left_rectified').mkdir(exist_ok=True, parents=True)
                 Path(out_dir/'right_rectified').mkdir(exist_ok=True, parents=True)
-                cv2.imwrite(str(out_dir/'left_rectified'/f'{fid:06d}.png'),left_rect)
-                cv2.imwrite(str(out_dir/'right_rectified'/f'{fid:06d}.png'),right_rect)
-                sio.save_subpix_png(out_dir/'depthmap_rectified'/f'{fid:06d}.png',
+                cv2.imwrite(str(out_dir/'left_rectified'/f'{frame_id:06d}.png'),left_rect)
+                cv2.imwrite(str(out_dir/'right_rectified'/f'{frame_id:06d}.png'),right_rect)
+                sio.save_subpix_png(out_dir/'depthmap_rectified'/f'{frame_id:06d}.png',
                                     depthmap_rectified, args.scale_factor)
-                sio.save_subpix_png(out_dir/'disparity'/f'{fid:06d}.png',
+                sio.save_subpix_png(out_dir/'disparity'/f'{frame_id:06d}.png',
                                     disparity, args.scale_factor)
             stereo_calib.save(out_dir/'stereo_calib.json')
+            
+
+if __name__=='__main__':
+    main()
