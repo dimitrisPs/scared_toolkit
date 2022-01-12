@@ -12,10 +12,9 @@ import re
 from collections import OrderedDict
 from tqdm import tqdm
 from io import BytesIO
-from typing import Union, Literal, Tuple, Iterator
+from typing import Union, Tuple, Iterator
 import json
 
-ORIENTATION = Literal["vertical", "horizontal"]
 
 
 def load_pose_sequence(filepath: Union[Path, str]) -> OrderedDict:
@@ -68,7 +67,7 @@ class Img3dTarLoader:
         tar_p = Path(tar_filepath)
         assert tar_p.is_file()
         self.tardata = tarfile.open(tar_p, "r:gz")
-        # contract a reference dict to access .tiff files based on their index
+        # constract a reference dict to access .tiff files based on their index
         self.tarnames = {
             int(re.sub(r"\D", "", i.name)): i for i in self.tardata.getmembers()
         }
@@ -79,7 +78,7 @@ class Img3dTarLoader:
         assert key < self.num_frames
         data = self.tardata.extractfile(self.tarnames[key]).read()
         img = tiff.imread(BytesIO(data))
-        # items with z=0 are clearly unknown, set them to nan.
+        # items with z=0 are unknown, set them to nan.
         img[img[:, :, 2] == 0] = np.nan
         return img
 
@@ -109,7 +108,7 @@ class StereoVideoCapture(cv2.VideoCapture):
     """ Wraps cv2.VideoCapture to read stereo videos stored as stacked images"""
 
     def __init__(
-        self, videopath: Union[Path, str], stacked: ORIENTATION = "vertical"
+        self, videopath: Union[Path, str], stacked:str = "vertical"
     ) -> None:
         """Constructor
         
@@ -163,7 +162,6 @@ def load_ply_as_ptcloud(path: Union[Path, str]) -> np.ndarray:
     """
     with open(path, "rb") as f:
         data = PlyData.read(f)
-        print((data["vertex"]["x"]).shape)
         ptcloud = np.vstack(
             [data["vertex"]["x"], data["vertex"]["y"], data["vertex"]["z"]]
         ).T
