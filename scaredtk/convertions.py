@@ -145,9 +145,14 @@ def ptcloud_to_img3d(
     h, w = size
     img3d = np.full((h, w, 3), fill_value=np.nan)
 
-    projection_coordinates = cv2.projectPoints(ptcloud, np.eye(3), np.zeros(3), K, D)[
-        0
-    ].squeeze()
+    if np.sum(D) ==0: 
+        #in case there is no distortion matrix, save time by just projection the points
+        projection_coordinates = project_pts(ptcloud, np.hstack((K, np.zeros(3).reshape(3,1))))
+
+    else:
+        projection_coordinates = cv2.projectPoints(ptcloud, np.eye(3), np.zeros(3), K, D)[
+            0
+        ].squeeze()
 
     # get the projection coordinates, round them and check which of the points
     # end up within the image view.
