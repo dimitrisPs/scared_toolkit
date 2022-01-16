@@ -15,8 +15,8 @@ parser.add_argument('--depth','-de', help='generate_depthmap in the original fra
 parser.add_argument('--undistort','-u', help='generate undistorted depthmap and left rgb in the original frame of reference', action='store_true')
 parser.add_argument('--disparity','-di', help='generate rectified views and disparity maps', action='store_true')
 parser.add_argument('--ptcloud', help='name of the pointcloud to provide reference, .ply are supported, must be placed inside keyframe dirs.')
-parser.add_argument('--alpha', help='alpha parameter to use during stereo rectification, default=-1', type=float, default=-1)
-parser.add_argument('--scale_factor', help='scale factor to use when storing subpixel pngs, default=256.0', type=float, default=256.0)
+parser.add_argument('--alpha', help='alpha parameter to use during stereo rectification. A value of 0 results to no black borders. default=0.', type=float, default=-1)
+parser.add_argument('--scale_factor', help='scale factor to use when storing subpixel pngs, default=128.0', type=float, default=128.0)
 
 
 
@@ -29,7 +29,7 @@ if __name__=='__main__':
     else:
         keyframe_dirs = [root_dir]
         
-    for kf in tqdm(keyframe_dirs,desc='processed keyframes'):
+    for kf in tqdm(keyframe_dirs,desc='keyframes processed'):
         out_dir = Path(args.out_dir)/kf.parent.name/kf.name if args.out_dir is not None else kf
         out_dir.mkdir(exist_ok=True, parents=True)
         
@@ -45,7 +45,10 @@ if __name__=='__main__':
         # sequence we need to load them to maintain good pixel coverage.
         if args.ptcloud is not None:
             gt_ptcloud = sio.load_ply_as_ptcloud(kf/args.ptcloud)
-            gt_img3d = cvt.ptcloud_to_img3d(gt_ptcloud)
+            gt_img3d = cvt.ptcloud_to_img3d(gt_ptcloud,
+                                            calib['K1'],
+                                            calib['D1'],
+                                            (1024,1280))
         else:
             gt_ptcloud = sio.load_scared_obj(kf/'point_cloud.obj')
             gt_img3d = sio.load_img3d(kf/'left_depth_map.tiff')
