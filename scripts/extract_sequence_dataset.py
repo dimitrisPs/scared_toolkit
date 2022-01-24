@@ -52,6 +52,7 @@ def main():
         keyframe_dirs = [root_dir]
     
     for kf in tqdm(keyframe_dirs,desc='processed keyframes'):
+        valid_list=[]
         # create output directories
         out_dir = Path(args.out_dir)/kf.parent.name/kf.name if args.out_dir is not None else kf
         out_dir.mkdir(exist_ok=True, parents=True)
@@ -75,8 +76,8 @@ def main():
         if args.undistort:
             und_maps_left = undistort_map(calib['K1'],
                                           calib['D1'],
-                                          (1024, 1280))
-
+                                          (1024, 1280))# image size
+        pixel_area = 1024*1280
 
         for frame_id in tqdm(range(frame_count), desc='processing frames', leave=False):
         
@@ -92,9 +93,9 @@ def main():
             
             assert left_img is not None
 
+            
             if args.depth:
                 depthmap = cvt.img3d_to_depthmap(gt_img3d)
-
                 Path(out_dir/'left').mkdir(exist_ok=True, parents=True)
                 cv2.imwrite(str(out_dir/'left'/f'{frame_id:06d}.png'), left_img)
                 sio.save_subpix_png(out_dir/'depthmap'/f'{frame_id:06d}.png',
@@ -144,7 +145,13 @@ def main():
                                     depthmap_rectified, args.scale_factor)
                 sio.save_subpix_png(out_dir/'disparity'/f'{frame_id:06d}.png',
                                     disparity, args.scale_factor)
-            stereo_calib.save(out_dir/'stereo_calib.json')
+            #compute coverage
+            coverage = 1 - (np.count_nonzero(np.isnan(gt_img3d[...,-2]))/pixel_area)
+            if coverage>=.1:
+                valid_list.append(frame_id)
+            
+        stereo_calib.save(out_dir/'stereo_calib.json')
+        np.savetxt(out_dir/"valid.csv", np.array(valid_list), delimiter=',')
             
 
 if __name__=='__main__':
