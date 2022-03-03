@@ -1,4 +1,5 @@
 from pathlib import Path
+from time import sleep
 from scaredtk.calibrator import StereoCalibrator
 from scaredtk.calibrator import undistort as undistortm
 import scaredtk.io as sio
@@ -47,10 +48,9 @@ def main():
     root_dir = Path(args.root_dir)
     #recursively find all keyframe directories
     if args.recursive:
-        keyframe_dirs = [p for p in root_dir.rglob('**/keyframe_*') if p.is_dir()] 
+        keyframe_dirs = sorted([p for p in root_dir.rglob('**/keyframe*') if p.is_dir()]) 
     else:
         keyframe_dirs = [root_dir]
-    
     for kf in tqdm(keyframe_dirs,desc='processed keyframes'):
         valid_list=[]
         # create output directories
@@ -63,7 +63,7 @@ def main():
 
         # Keyframe 5 is a single frame
         if (kf/'data'/'rgb.mp4').is_file():
-            video_loader = sio.StereoVideoCapture(kf/'data'/'rgb.mp4')
+            video_loader = cv2.VideoCapture(str(kf/'data'/'rgb.mp4'))
             tqdm.write('loading tarfile sequence, this will take a lot of time...')
 
             # this will create a dictionary with all the available frames
@@ -82,8 +82,10 @@ def main():
         for frame_id in tqdm(range(frame_count), desc='processing frames', leave=False):
         
             if frame_count !=1:
-                left_img, right_img = video_loader.read()
-                #get only the left part of the image, stored in the first 1024 rows
+                ret, frames = video_loader.read()
+                left_img = frames[: 1024]
+                right_img = frames[1024:]
+                assert ret
                 gt_img3d = gt_sequence[frame_id][:left_img.shape[0]]
             else:
                 left_img = cv2.imread(str(kf/'Left_Image.png'))
@@ -93,12 +95,11 @@ def main():
             
             assert left_img is not None
 
-            
             if args.depth:
                 depthmap = cvt.img3d_to_depthmap(gt_img3d)
-                Path(out_dir/'left').mkdir(exist_ok=True, parents=True)
-                cv2.imwrite(str(out_dir/'left'/f'{frame_id:06d}.png'), left_img)
-                sio.save_subpix_png(out_dir/'depthmap'/f'{frame_id:06d}.png',
+                Path(out_dir/'data'/'left').mkdir(exist_ok=True, parents=True)
+                cv2.imwrite(str(out_dir/'data'/'left'/f'{frame_id:06d}.png'), left_img)
+                sio.save_subpix_png(out_dir/'data'/'depthmap'/f'{frame_id:06d}.png',
                                     depthmap, args.scale_factor)
             gt_ptcloud = cvt.img3d_to_ptcloud(gt_img3d)
 
@@ -115,10 +116,10 @@ def main():
                                                             left_img.shape[:2])
                 
                 
-                sio.save_subpix_png(out_dir/'depthmap_undistorted'/f'{frame_id:06d}.png',
+                sio.save_subpix_png(out_dir/'data'/'depthmap_undistorted'/f'{frame_id:06d}.png',
                                     depthmap_undistorted, args.scale_factor)
-                Path(out_dir/'left_undistorted').mkdir(exist_ok=True, parents=True)
-                cv2.imwrite(str(out_dir/'left_undistorted'/f'{frame_id:06d}.png'),
+                Path(out_dir/'data'/'left_undistorted').mkdir(exist_ok=True, parents=True)
+                cv2.imwrite(str(out_dir/'data'/'left_undistorted'/f'{frame_id:06d}.png'),
                                 left_rgb_undistored)
                 
             if args.disparity:
@@ -137,22 +138,24 @@ def main():
                                                             right_rect.shape[:2])
                 
                 
-                Path(out_dir/'left_rectified').mkdir(exist_ok=True, parents=True)
-                Path(out_dir/'right_rectified').mkdir(exist_ok=True, parents=True)
-                cv2.imwrite(str(out_dir/'left_rectified'/f'{frame_id:06d}.png'),left_rect)
-                cv2.imwrite(str(out_dir/'right_rectified'/f'{frame_id:06d}.png'),right_rect)
-                sio.save_subpix_png(out_dir/'depthmap_rectified'/f'{frame_id:06d}.png',
+                Path(out_dir/'data'/'left_rectified').mkdir(exist_ok=True, parents=True)
+                Path(out_dir/'data'/'right_rectified').mkdir(exist_ok=True, parents=True)
+                cv2.imwrite(str(out_dir/'data'/'left_rectified'/f'{frame_id:06d}.png'),left_rect)
+                cv2.imwrite(str(out_dir/'data'/'right_rectified'/f'{frame_id:06d}.png'),right_rect)
+                sio.save_subpix_png(out_dir/'data'/'depthmap_rectified'/f'{frame_id:06d}.png',
                                     depthmap_rectified, args.scale_factor)
-                sio.save_subpix_png(out_dir/'disparity'/f'{frame_id:06d}.png',
+                sio.save_subpix_png(out_dir/'data'/'disparity'/f'{frame_id:06d}.png',
                                     disparity, args.scale_factor)
-            #compute coverage
+            #compute pixel coverage
             coverage = 1 - (np.count_nonzero(np.isnan(gt_img3d[...,-2]))/pixel_area)
             if coverage>=.1:
                 valid_list.append(frame_id)
             
         stereo_calib.save(out_dir/'stereo_calib.json')
-        np.savetxt(out_dir/"valid.csv", np.array(valid_list), delimiter=',')
-            
+        np.savetxt(kf/"valid.csv", valid_list, fmt='%i', delimiter=",")
+        if frame_count !=1:
+            video_loader.release()    
+            del video_loader
 
 if __name__=='__main__':
     main()
