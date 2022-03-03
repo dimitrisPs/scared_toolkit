@@ -84,6 +84,7 @@ generate a disparity image based on a pointcloud, the result is meaningless if
 the provided pointcloud is not rotated to the rectified frame of reference and
 the Projection matrices are not obtained from the stereo rectification process.
 
+
 ### Environment setup
 
 This project was build using anaconda. Assuming that anaconda is already installed
@@ -126,7 +127,7 @@ ensure that the initial scared dataset follows the file structure described bell
 │   └── keyframe_M
 │       └── data
 :       :
-└── keyframe_N
+└── dataset_N
     ├── keyframe_1
     :       :         
     └── keyframe_M
