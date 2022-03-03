@@ -15,7 +15,7 @@ parser.add_argument('--depth','-de', help='generate_depthmap in the original fra
 parser.add_argument('--undistort','-u', help='generate undistorted depthmap and left rgb in the original frame of reference', action='store_true')
 parser.add_argument('--disparity','-di', help='generate rectified views and disparity maps', action='store_true')
 parser.add_argument('--ptcloud', help='name of the pointcloud to provide reference, .ply are supported, must be placed inside keyframe dirs.')
-parser.add_argument('--alpha', help='alpha parameter to use during stereo rectification. A value of 0 results to no black borders. default=0.', type=float, default=-1)
+parser.add_argument('--alpha', help='alpha parameter to use during stereo rectification. A value of 0 results to no black borders. default=0.', type=float, default=0)
 parser.add_argument('--scale_factor', help='scale factor to use when storing subpixel pngs, default=128.0', type=float, default=128.0)
 
 
@@ -25,9 +25,11 @@ if __name__=='__main__':
     root_dir = Path(args.root_dir)
     #recursively find all keyframe dirs
     if args.recursive:
-        keyframe_dirs = [p for p in root_dir.rglob('**/keyframe_*') if p.is_dir()] 
+        keyframe_dirs = [p for p in root_dir.rglob('**/keyframe*') if p.is_dir()] 
     else:
         keyframe_dirs = [root_dir]
+    if args.out_dir is None:
+        args.out_dir = root_dir
         
     for kf in tqdm(keyframe_dirs,desc='keyframes processed'):
         out_dir = Path(args.out_dir)/kf.parent.name/kf.name if args.out_dir is not None else kf
@@ -50,7 +52,10 @@ if __name__=='__main__':
                                             calib['D1'],
                                             (1024,1280))
         else:
-            gt_ptcloud = sio.load_scared_obj(kf/'point_cloud.obj')
+            try:
+                gt_ptcloud = sio.load_scared_obj(kf/'point_cloud.obj')
+            except FileNotFoundError:
+                gt_ptcloud = sio.load_scared_obj(kf/'left_point_cloud.obj')
             gt_img3d = sio.load_img3d(kf/'left_depth_map.tiff')
             
         if args.depth:
