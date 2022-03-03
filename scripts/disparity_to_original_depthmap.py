@@ -7,7 +7,8 @@ from tqdm import tqdm
 from scaredtk.calibrator import StereoCalibrator
 import scaredtk.io as sio
 import scaredtk.convertions as cvt
-import tifffile
+from multiprocessing import Pool
+from itertools import repeat
 
 def compute_distort_maps(src_k, dst_k, dst_d,h,w):
     # compute distortion maps. Essentailly we need to estimate the inverse transformation
@@ -35,6 +36,27 @@ def naive_interpolation(img):
 
     return img.reshape(h,w)
 
+def disparity_to_depth_save(disparity_p, depth_p, distortion_map_x, distortion_map_y, calib, scale_factor):
+
+        disparity = sio.load_subpix_png(disparity_p, scale_factor)
+        
+        pt_cloud = cvt.disparity_to_ptcloud(disparity, calib['Q'])
+
+        # rotate ptcloud to the original frame of reference
+        pt_cloud = cvt.transform_pts(pt_cloud, cvt.create_RT(R=np.linalg.inv(calib['R1'])))
+        
+        
+        # project project the pointcloud back to the original frame of reference
+        # Depending on the rectification and geometry, this projection may have hole
+        img_3d = cvt.ptcloud_to_img3d(pt_cloud, calib['P1'][:3,:3], np.zeros_like(calib['D1']), disparity.shape[:2])
+        # Adjust projection for initial camera matrix and distortions
+        out_img = cv2.remap(img_3d[...,-1], distortion_map_x, distortion_map_y,0)
+        # interpolate missing pixels if any.
+        out_img = naive_interpolation(out_img)
+        #save depthmap
+        sio.save_subpix_png(depth_p, out_img, scale_factor)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('disparity_dir', help='path to the predicted disparities', type=str)
@@ -42,6 +64,7 @@ def main():
     parser.add_argument('calibration', help='path to calibration file created during the rectification process', type=str)
     parser.add_argument('--overwrite', '-o', help='overwrite existing files in dst_depth_dir', action='store_true')
     parser.add_argument('--scale_factor', help='scale factor used to save disparities as 16bit png, default=128.0', default=128, type=float)
+    parser.add_argument('--jobs', '-j', type=int, help='how many jobs to run in parallel', default=16)
     args = parser.parse_args()
 
     if not Path(args.disparity_dir).is_dir():
@@ -66,28 +89,14 @@ def main():
     disparity_paths = sorted([p for p in Path(args.disparity_dir).iterdir() if p.is_file()])
     depth_paths = [dst_dir/(p.stem+'.png') for p in disparity_paths]
     
-    for disparity_p, depth_p in tqdm(zip(disparity_paths, depth_paths), desc='files processed'):
-    
-        disparity = sio.load_subpix_png(disparity_p, args.scale_factor)
-        
-        pt_cloud = cvt.disparity_to_ptcloud(disparity, calib['Q'])
+    with Pool(args.jobs) as pool:
+        pool.starmap(disparity_to_depth_save, tqdm(zip(disparity_paths,
+                                             depth_paths,
+                                             repeat(distortion_map_x),
+                                             repeat(distortion_map_y),
+                                             repeat(calib),
+                                             repeat(args.scale_factor)), total=len(disparity_paths)))
 
-        # rotate ptcloud to the original frame of reference
-        pt_cloud = cvt.transform_pts(pt_cloud, cvt.create_RT(R=np.linalg.inv(calib['R1'])))
-        
-        
-        # project project the pointcloud back to the original frame of reference
-        # Depending on the rectification and geometry, this projection may have hole
-        img_3d = cvt.ptcloud_to_img3d(pt_cloud, calib['P1'][:3,:3], np.zeros_like(calib['D1']), disparity.shape[:2])
-        # Adjust projection for initial camera matrix and distortions
-        out_img = cv2.remap(img_3d[...,-1], distortion_map_x, distortion_map_y,0)
-        # interpolate missing pixels if any.
-        out_img = naive_interpolation(out_img)
-        #save depthmap
-        if depth_p.exists():
-            print('destination files exists, rerun the script with the --overwrite flag', file=sys.stderr)
-            return 1
-        tifffile.imwrite(str(depth_p), out_img)
     return 0   
         
     
