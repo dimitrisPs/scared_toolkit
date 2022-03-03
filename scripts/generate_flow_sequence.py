@@ -1,12 +1,11 @@
+#!/usr/bin/env python3
+
 from pathlib import Path
 from scaredtk.calibrator import StereoCalibrator
 import scaredtk.io as sio
 from scaredtk.convertions import ptcloud_to_flow
-import cv2
-import numpy as np
 import argparse
 from tqdm import tqdm
-import tifffile as tiff
 
 parser =argparse.ArgumentParser(description="Create keyframe dataset")
 parser.add_argument('root_dir', help="root directory under which keyframe data are stored")

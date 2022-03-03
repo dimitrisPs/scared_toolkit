@@ -1,5 +1,4 @@
 import cv2
-import argparse
 import numpy as np
 from pathlib import Path
 import errno

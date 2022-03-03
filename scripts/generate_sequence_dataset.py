@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+
+
 from pathlib import Path
 from scaredtk.calibrator import StereoCalibrator, undistort
 import scaredtk.io as sio

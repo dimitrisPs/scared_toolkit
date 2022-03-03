@@ -1,7 +1,7 @@
+#!/usr/bin/env python3
+
 from pathlib import Path
-from time import sleep
 from scaredtk.calibrator import StereoCalibrator
-from scaredtk.calibrator import undistort as undistortm
 import scaredtk.io as sio
 import scaredtk.convertions as cvt
 import cv2
