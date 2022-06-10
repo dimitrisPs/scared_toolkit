@@ -17,11 +17,19 @@ cite the [challenge's paper](https://arxiv.org/abs/2101.01133)
 }
 ```
 
-This repository contains code developed as a part of the paper [Real-time multi-task 3D scene reconstruction and instrument segmentation using surgical video]().
+This repository contains code developed as a part of the paper [MSDESIS: Multi-task stereo disparity estimation and surgical instrument segmentation](https://ieeexplore.ieee.org/document/9791423).
 If you end up using code provided in this repository, please consider citing
 
 ```cite
-
+@ARTICLE{9791423,
+  author={Psychogyios, Dimitrios and Mazomenos, Evangelos and Vasconcelos, Francisco and Stoyanov, Danail},
+  journal={IEEE Transactions on Medical Imaging}, 
+  title={MSDESIS: Multi-task stereo disparity estimation and surgical instrument segmentation}, 
+  year={2022},
+  volume={},
+  number={},
+  pages={1-1},
+  doi={10.1109/TMI.2022.3181229}}
 ```
 
 ## Getting access to the SCARED dataset
