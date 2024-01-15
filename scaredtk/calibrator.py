@@ -185,7 +185,7 @@ class StereoCalibrator(Calibrator):
                                                                     self.calib_left.calib['D'],
                                                                     self.calib_right.calib['K'],
                                                                     self.calib_right.calib['D'],
-                                                                    self.img_size,
+                                                                    self.img_size[::-1],
                                                                     flags=cv2.CALIB_USE_INTRINSIC_GUESS)
         print('RMS reprojection Error: ', error_rms)
 
@@ -203,7 +203,7 @@ class StereoCalibrator(Calibrator):
                                                         self.calib['D1'],
                                                         self.calib['K2'],
                                                         self.calib['D2'],
-                                                        self.calib['image_size'],
+                                                        self.calib['image_size'][::-1],
                                                         self.calib['R'].astype(np.float64),
                                                         self.calib['T'].astype(np.float64).reshape(3,1),
                                                         alpha=self.rect_alpha)
